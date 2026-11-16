@@ -2,9 +2,9 @@
    CCAR-F revision data — Claude Certified Architect – Foundations
    Source: public Exam Guide v1.0 (July 2026) + Anthropic documentation.
    Verbatim guide content lives in blueprint.js (frozen). This file holds what
-   we authored: exam facts, domain summaries, takeaways, flashcards.
-   Load order (index.html): blueprint.js → q-*.js → data.js → ../shared/app.js
-   Field names nom/poids/couleur/resume/cles/recto/verso are kept from the
+   we authored: exam facts, domain summaries, takeaways. Lessons: lessons-d*.js.
+   Load order (index.html): blueprint.js → q-*.js → lessons-*.js → data.js → ../shared/app.js
+   Field names nom/poids/couleur/resume/cles are kept from the
    CCDV-F app the shared engine was generalised from.
    ============================================================================ */
 (function () {
@@ -134,51 +134,12 @@
     })),
   }));
 
-  const FLASHCARDS = [
-    { domain: 1, recto: "When does an agentic loop stop?", verso: "When `stop_reason` is `end_turn`. Continue while it is `tool_use`. Text content, the word DONE or an iteration cap are not the stopping signal (a cap is a backstop only)." },
-    { domain: 1, recto: "Do subagents see the coordinator's conversation?", verso: "No — a standard subagent starts fresh. Pass findings and goals in its prompt. Only fork subagents inherit the conversation." },
-    { domain: 1, recto: "Subagent-spawning tool name", verso: "`Agent` in current docs; the exam guide calls it `Task` (still accepted as an alias). It must be in the coordinator's `allowedTools`." },
-    { domain: 1, recto: "How to run subagents in parallel", verso: "Emit several Agent/Task tool calls in a single coordinator response." },
-    { domain: 1, recto: "Prompt rule vs hook", verso: "A prompt rule is probabilistic. A hook or prerequisite gate is executed by code — use it when the rule must always hold (identity before refund, $500 ceiling)." },
-    { domain: 1, recto: "PostToolUse hook — typical use", verso: "Normalise tool output before the model sees it: Unix timestamps vs ISO 8601, numeric status codes → labels." },
-    { domain: 1, recto: "Resume or start fresh?", verso: "Resume when prior context is mostly valid (tell it which files changed). Start fresh with a structured summary when tool results are stale. Fork to explore two approaches from one baseline." },
-    { domain: 1, recto: "Prompt chaining vs dynamic decomposition", verso: "Chaining: fixed, predictable steps (per-file pass then integration pass). Dynamic: open-ended investigation where subtasks depend on what is discovered." },
-    { domain: 2, recto: "What does a model use to choose a tool?", verso: "Mainly the tool description. Include purpose, input formats, example queries, edge cases, and when to use it versus similar tools." },
-    { domain: 2, recto: "Structured tool error fields", verso: "`errorCategory` (transient / validation / business / permission), `isRetryable`, a readable message — returned with MCP `isError: true`." },
-    { domain: 2, recto: "Timeout vs empty result", verso: "A timeout is an access failure (retry decision). Zero matches is a successful query. Never report one as the other." },
-    { domain: 2, recto: "tool_choice options", verso: "`auto` — may reply in text · `any` — must call some tool · `{type:\"tool\",name}` — must call that tool · `none`." },
-    { domain: 2, recto: "Project vs user MCP config", verso: "Project: `.mcp.json` in the repo, shared, `${VAR}` for secrets. User: `~/.claude.json`, personal/experimental." },
-    { domain: 2, recto: "MCP resources — why", verso: "Expose a catalog (schemas, docs, issue summaries) so the agent sees what exists without exploratory tool calls." },
-    { domain: 2, recto: "Grep vs Glob", verso: "Grep searches file contents (callers, error messages). Glob matches file paths (`**/*.test.tsx`)." },
-    { domain: 3, recto: "Instruction not reaching a new teammate?", verso: "It is probably in `~/.claude/CLAUDE.md` (personal). Move it to the project CLAUDE.md, committed. Check with `/memory`." },
-    { domain: 3, recto: "Conventions for test files spread everywhere", verso: "`.claude/rules/testing.md` with `paths: [\"**/*.test.tsx\"]` — loads only when matching files are touched." },
-    { domain: 3, recto: "Skill frontmatter you must know", verso: "`context: fork` (isolated subagent), `allowed-tools` (restrict tools), `argument-hint` (prompt for parameters)." },
-    { domain: 3, recto: "Skill or CLAUDE.md?", verso: "CLAUDE.md: always loaded, universal standards. Skill: loaded on demand, task-specific workflow." },
-    { domain: 3, recto: "Plan mode or direct execution?", verso: "Plan mode for architecture, many files, several valid approaches. Direct for a clear, scoped change such as a single-file bug fix." },
-    { domain: 3, recto: "Claude Code in CI", verso: "`claude -p \"…\"` (non-interactive) + `--output-format json` + `--json-schema` for structured findings." },
-    { domain: 3, recto: "Why not let the generating session review its code?", verso: "It keeps its own reasoning and is less likely to question it. Use an independent instance." },
-    { domain: 4, recto: "Precision lever that does NOT work", verso: "'Be conservative' / 'only report high-confidence findings'. Use explicit categorical criteria instead." },
-    { domain: 4, recto: "How many few-shot examples, and what kind?", verso: "2–4 targeted examples of the ambiguous cases, showing why one choice beats the plausible alternative." },
-    { domain: 4, recto: "What a JSON schema does not guarantee", verso: "Semantic correctness — items not summing to the total, values in the wrong field. Validate separately." },
-    { domain: 4, recto: "Preventing fabricated fields", verso: "Make fields optional/nullable when the source may not contain them; add `unclear` / `other` + detail to enums." },
-    { domain: 4, recto: "When a retry will not help", verso: "When the information is absent from the source (e.g. it is in a document not provided). Retries fix format and structure errors." },
-    { domain: 4, recto: "Message Batches API in one line", verso: "50% cheaper, up to 24 h, no latency SLA, no mid-request tool calls, results matched by `custom_id`." },
-    { domain: 4, recto: "Batch SLA arithmetic", verso: "Guarantee = submission interval + 24 h processing. A 30 h SLA needs a batch at least every 6 h (the guide uses 4 h windows for margin)." },
-    { domain: 5, recto: "Case facts block", verso: "Amounts, dates, order IDs, statuses kept verbatim in every prompt, outside the summarised history, so summarisation cannot blur them." },
-    { domain: 5, recto: "Lost in the middle — mitigation", verso: "Put a key-findings summary at the start; organise the details under explicit section headers." },
-    { domain: 5, recto: "Valid escalation triggers", verso: "Customer asks for a human (honour immediately) · policy gap or exception · no meaningful progress. Not sentiment, not self-rated confidence." },
-    { domain: 5, recto: "Multiple customer matches", verso: "Ask for an additional identifier. Never pick by heuristic." },
-    { domain: 5, recto: "Error context a subagent should propagate", verso: "Failure type, what was attempted, partial results, possible alternatives — after local retries of transient failures." },
-    { domain: 5, recto: "97% overall accuracy — safe to automate?", verso: "Not yet: check accuracy by document type and field; keep stratified sampling of high-confidence output." },
-    { domain: 5, recto: "Two credible sources disagree", verso: "Keep both values with attribution (and dates); let the coordinator reconcile. Never pick one silently." },
-  ];
-
   window.CERT = {
     EXAM_INFO,
     DOMAINS,
     SCENARIOS: BP.scenarios,
     QUESTIONS: window.CCARF_QUESTIONS || [],
-    FLASHCARDS,
+    LESSONS: window.CCARF_LESSONS || [],
     PREP: BP.prep,
   };
   /* Namespace read by tools/check-bank.mjs. */

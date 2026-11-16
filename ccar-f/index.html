@@ -18,11 +18,10 @@
     </a>
     <nav class="tabs" id="tabs">
       <button class="tab active" data-view="home">Home</button>
-      <button class="tab" data-view="domains">Domains</button>
+      <button class="tab" data-view="learn">Learn</button>
       <button class="tab" data-view="scenarios">Scenarios</button>
       <button class="tab" data-view="exam">Mock exam</button>
       <button class="tab" data-view="quiz">Practice</button>
-      <button class="tab" data-view="flashcards">Flashcards</button>
       <button class="tab" data-view="cheatsheet">Cheat sheet</button>
     </nav>
     <button class="theme-toggle" id="themeToggle" title="Toggle light/dark" aria-label="Toggle theme">🌙</button>
@@ -36,7 +35,7 @@
     “exam-guide sample” are the examples published in the guide itself. Runs fully offline.</span>
   </footer>
 
-  <!-- Load order matters: blueprint (frozen guide text) → question files → data.js (assembles window.CERT) → engine. -->
+  <!-- Load order matters: blueprint (frozen guide text) → question files → lessons → data.js (assembles window.CERT) → engine. -->
   <script src="blueprint.js"></script>
   <script src="q-samples.js"></script>
   <script src="q-d1a.js"></script>
@@ -45,6 +44,11 @@
   <script src="q-d3.js"></script>
   <script src="q-d4.js"></script>
   <script src="q-d5.js"></script>
+  <script src="lessons-d1.js"></script>
+  <script src="lessons-d2.js"></script>
+  <script src="lessons-d3.js"></script>
+  <script src="lessons-d4.js"></script>
+  <script src="lessons-d5.js"></script>
   <script src="data.js"></script>
   <script src="../shared/app.js"></script>
 </body>

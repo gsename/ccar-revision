@@ -14,13 +14,22 @@ network. The pages run straight from the filesystem, and the same files are serv
 - **Home** — exam facts, blueprint weights, the guide's "How to Prepare" list, and your last mock score.
   Also two buttons: a **10-question diagnostic** (2 questions per domain, over 5 domains) and
   **Weak spots**.
-- **Domains** — each domain with a summary and key takeaways. Each task statement or objective shows the
-  **exam guide's own wording, verbatim**, and has a practice button.
+- **Learn** — one short lesson per task statement (30 for CCAR-F) or objective (38 for CCAR-P), built
+  to be read in about two minutes. Each lesson has:
+  - the idea in one sentence, a **diagram**, the key points, and sometimes a table or a short code snippet;
+  - the exam traps (the tempting wrong idea next to the correct one) and a one-line "in the exam" rule;
+  - the exam guide's own wording, verbatim;
+  - a **Check yourself** question drawn from the bank, and links to the Anthropic documentation.
+
+  Lessons are grouped by domain, with a "lessons read" progress bar and previous/next navigation.
 - **Scenarios** (CCAR-F only) — the 6 exam scenarios, verbatim, each with a practice button.
 - **Mock exam** — a weighted draw scored on the 100–1000 scale, with 720 to pass. Correction comes at the
   end. There is an optional timer, a per-domain breakdown and a full review.
 - **Practice** — immediate correction. Filter by domain, by task statement or objective, and by scenario.
-- **Flashcards** and **Cheat sheet** — optional extras that sit on top of the bank.
+- **Cheat sheet** — every domain's key takeaways on one page.
+
+Diagrams are plain HTML/CSS (flow, hub, layers, comparison, decision), so they work offline, follow the
+light/dark theme, and stack vertically on a phone.
 
 Light and dark themes are available. History is stored in `localStorage`, in a separate key per
 certification. **Weak spots** keeps the id of every question you got wrong and drops it once you get it
@@ -126,6 +135,7 @@ reports their ratios separately.
 node tools/check-bank.mjs --cert f            # CCAR-F report; fails only on real errors
 node tools/check-bank.mjs --cert p --strict   # also fails on target-count shortfalls
 node tools/file-stats.mjs ccar-f/q-d2.js      # quick per-file authoring stats
+node tools/check-lessons.mjs --cert f --strict # lessons: coverage, diagram shape, <= 520 words, sources
 ```
 
 The validator checks:
@@ -179,9 +189,11 @@ which model tiers accept forced `tool_choice`.
 | `ccar-*/blueprint.js` | Verbatim exam-guide content (objectives, scenarios, prep list). Frozen. |
 | `ccar-*/q-samples.js` | The published sample questions (12 for CCAR-F, 3 for CCAR-P), verbatim. Frozen. |
 | `ccar-*/q-d*.js` | The practice bank, one file per domain (CCAR-F D1 is split in two) |
-| `ccar-*/data.js` | Exam facts, domain summaries, takeaways, flashcards; assembles `window.CERT` |
+| `ccar-*/lessons-d*.js` | The Learn lessons, one file per domain |
+| `ccar-*/data.js` | Exam facts, domain summaries, takeaways; assembles `window.CERT` |
 | `tools/check-bank.mjs` | Bank validator (not loaded by the pages) |
 | `tools/file-stats.mjs` | Per-file authoring stats |
+| `tools/check-lessons.mjs` | Lesson validator: one lesson per sub-skill, diagram shape, length budget, verified source links |
 | `.nojekyll` | Tells GitHub Pages to serve the files as-is |
 
 ## Sources

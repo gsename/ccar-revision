@@ -5,7 +5,8 @@
    Generalised from the CCDV-F revision app.
    ============================================================================ */
 (function () {
-  const { EXAM_INFO, DOMAINS, SCENARIOS, QUESTIONS, FLASHCARDS, PREP } = window.CERT;
+  const { EXAM_INFO, DOMAINS, SCENARIOS, QUESTIONS, PREP } = window.CERT;
+  const LESSONS = window.CERT.LESSONS || [];
   const app = document.getElementById("app");
   const tabs = document.getElementById("tabs");
 
@@ -25,8 +26,8 @@
   /* ---------- utils ---------- */
   const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; };
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  /* esc first, then `identifier` -> <code>; escaping first means no injection. */
-  const fmt = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
+  /* esc first, then `identifier` -> <code> and **x** -> <strong>; escaping first means no injection. */
+  const fmt = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
   const shuffle = (a) => { const r = a.slice(); for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; } return r; };
   const domain = (id) => DOMAINS.find((d) => d.id === id);
   const scenario = (id) => (SCENARIOS || []).find((s) => s.id === id);
@@ -205,7 +206,8 @@
       </div>` : ""}
 
       <div class="btn-row" style="margin:14px 0 4px">
-        <button class="btn" id="ctaDiag">Start with a 10-question diagnostic</button>
+        <button class="btn" id="ctaLearn">Learn (${LESSONS.length} lessons)</button>
+        <button class="btn ghost" id="ctaDiag">10-question diagnostic</button>
         <button class="btn ghost" id="ctaExam">Take a mock exam</button>
         <button class="btn ghost" id="ctaQuiz">Practice</button>
         ${weak ? `<button class="btn ghost" id="ctaWeak">Weak spots (${weak})</button>` : ""}
@@ -245,13 +247,14 @@
         <div class="bp-track"><div class="bp-fill" style="width:0%;background:${d.couleur}"></div></div>
         <div class="bp-val">${d.poids}%</div>
       </div>`);
-      row.addEventListener("click", () => { openDomain = d.id; go("domains"); });
+      row.addEventListener("click", () => { openDomain = d.id; go("learn"); });
       bp.appendChild(row);
       requestAnimationFrame(() => { row.querySelector(".bp-fill").style.width = (d.poids / maxWeight * 100) + "%"; });
     });
     const prep = wrap.querySelector("#prep");
     PREP.forEach((p) => prep.appendChild(el(`<li>${fmt(p)}</li>`)));
 
+    wrap.querySelector("#ctaLearn").addEventListener("click", () => go("learn"));
     wrap.querySelector("#ctaDiag").addEventListener("click", startDiagnostic);
     wrap.querySelector("#ctaExam").addEventListener("click", () => go("exam"));
     wrap.querySelector("#ctaQuiz").addEventListener("click", () => go("quiz"));
@@ -271,62 +274,183 @@
   }
 
   /* ============================================================================
-     DOMAINS
+     LEARN — one short lesson per task statement / objective, with a diagram.
+     Lessons live in <cert>/lessons-*.js (window.CERT.LESSONS), keyed by the
+     sub-skill id ("1.1"). Read state is kept per cert in localStorage.
      ========================================================================= */
   let openDomain = null;
-  views.domains = function () {
+  const skillOf = (id) => {
+    for (const d of DOMAINS) for (const s of d.skills) if (s.nom.split(" ")[0] === id) return { d, s };
+    return null;
+  };
+  const lessonOrder = () => DOMAINS.flatMap((d) => d.skills.map((s) => s.nom.split(" ")[0]))
+    .filter((id) => LESSONS.some((l) => l.id === id));
+  const readSet = () => new Set(load().read || []);
+
+  /* ---------- diagrams: small declarative kinds rendered as HTML/CSS ---------- */
+  const box = (n, cls = "") => `<div class="dg-box ${n.tone ? "t-" + n.tone : ""} ${cls}"><b>${fmt(n.label)}</b>${n.sub ? `<span>${fmt(n.sub)}</span>` : ""}</div>`;
+  const DIAGRAMS = {
+    flow: (g) => `<div class="dg-row">${g.steps.map((s, i) => box(s) +
+        (i < g.steps.length - 1 ? `<div class="dg-arrow"><i>→</i>${s.edge ? `<small>${fmt(s.edge)}</small>` : ""}</div>` : "")).join("")}</div>
+      ${g.loop ? `<div class="dg-loop">↺ ${fmt(g.loop)}</div>` : ""}`,
+    hub: (g) => `<div class="dg-hub">${box(g.center, "dg-center")}
+      <div class="dg-fan">${g.edge ? `<small>${fmt(g.edge)}</small>` : ""}</div>
+      <div class="dg-spokes">${g.spokes.map((s) => box(s)).join("")}</div></div>`,
+    layers: (g) => `<div class="dg-layers">${g.layers.map((l) => `<div class="dg-layer ${l.tone ? "t-" + l.tone : ""}">
+        <b>${fmt(l.label)}</b><span>${fmt(l.sub || "")}</span>${l.tag ? `<em>${fmt(l.tag)}</em>` : ""}</div>`).join("")}
+      ${g.axis ? `<div class="dg-axis">${fmt(g.axis)}</div>` : ""}</div>`,
+    compare: (g) => `<div class="dg-compare">${g.columns.map((c) => `<div class="dg-col ${c.tone ? "t-" + c.tone : ""}">
+        <div class="dg-col-h">${c.tone === "good" ? "✓ " : c.tone === "bad" ? "✗ " : ""}${fmt(c.title)}</div>
+        <ul>${c.items.map((x) => `<li>${fmt(x)}</li>`).join("")}</ul></div>`).join("")}</div>`,
+    decision: (g) => `<div class="dg-decision"><div class="dg-q">${fmt(g.question)}</div>
+      <div class="dg-branches">${g.branches.map((b) => `<div class="dg-branch ${b.tone ? "t-" + b.tone : ""}">
+        <small>${fmt(b.when)}</small><b>${fmt(b.then)}</b></div>`).join("")}</div></div>`,
+  };
+  function diagramHtml(g) {
+    if (!g || !DIAGRAMS[g.kind]) return "";
+    return `<figure class="dg dg-${g.kind}">${g.title ? `<figcaption>${fmt(g.title)}</figcaption>` : ""}
+      ${DIAGRAMS[g.kind](g)}${g.caption ? `<p class="dg-cap">${fmt(g.caption)}</p>` : ""}</figure>`;
+  }
+
+  views.learn = function () {
+    const read = readSet();
+    const total = lessonOrder().length;
+    const done = lessonOrder().filter((id) => read.has(id)).length;
     const wrap = el(`<div>
-      <h1>The ${DOMAINS.length} domains</h1>
-      <p class="lead">Click a domain to expand it. Each ${esc(EXAM_INFO.subLabel)} shows the exam guide's own wording
-      (verbatim) and a practice button. The percentage is the domain's weight on the exam; the guide publishes no
-      weight per ${esc(EXAM_INFO.subLabel)}.</p>
+      <h1>Learn</h1>
+      <p class="lead">One short lesson per ${esc(EXAM_INFO.subLabel)}: the idea in one sentence, a diagram, the key points,
+      the exam traps and a question to check yourself. Built for a quick read.</p>
+      <div class="card learn-progress">
+        <div><strong>${done} of ${total}</strong> lessons read</div>
+        <div class="progress"><div style="width:${total ? (done / total) * 100 : 0}%"></div></div>
+      </div>
+      <div id="doms"></div>
     </div>`);
+    const doms = wrap.querySelector("#doms");
     DOMAINS.forEach((d) => {
       const nQ = QUESTIONS.filter((q) => q.domain === d.id).length;
-      const dom = el(`<div class="dom${openDomain === d.id ? " open" : ""}">
-        <button class="dom-head">
+      const block = el(`<section class="card learn-dom" id="dom-${d.id}">
+        <div class="learn-dom-h">
           <span class="dom-num" style="background:${d.couleur}">${d.id}</span>
-          <span class="dom-title">${esc(d.nom)}</span>
-          <span class="dom-weight">${d.poids}%</span>
-          <span class="dom-caret">▶</span>
-        </button>
-        <div class="dom-body">
-          <p class="dom-resume">${esc(d.resume)}</p>
-          <div class="skills"></div>
-          <div class="keys-title">Key takeaways</div>
-          <ul class="keys"></ul>
-          <div class="btn-row"><button class="btn ghost btnQuizDom"${nQ ? "" : " disabled"}>Practise this domain (${nQ} questions)</button></div>
+          <div><h2>${esc(d.nom)}</h2><span class="hint">${d.poids}% of the exam · ${d.skills.length} lessons · ${nQ} questions</span></div>
         </div>
-      </div>`);
-      const sk = dom.querySelector(".skills");
+        <p class="dom-resume">${esc(d.resume)}</p>
+        <ol class="lesson-list"></ol>
+        <div class="btn-row"><button class="btn ghost small">Practise this domain</button></div>
+      </section>`);
+      const ol = block.querySelector("ol");
       d.skills.forEach((s) => {
-        const n = QUESTIONS.filter((q) => q.skill === s.nom).length;
-        const off = s.official || {};
-        const list = (title, arr) => arr && arr.length
-          ? `<div class="off-title">${title}</div><ul class="off-list">${arr.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
-        const node = el(`<div class="skill">
-          <strong>${esc(s.nom)}</strong>
-          <p>${esc(s.desc)}</p>
-          ${off.knowledge || off.skills ? `<details class="off"><summary>Exam guide wording</summary>
-            ${list("Knowledge of", off.knowledge)}${list("Skills in", off.skills)}</details>` : ""}
-          <button class="btn ghost small"${n ? "" : " disabled"}>Practise (${n})</button>
-        </div>`);
-        node.querySelector("button").addEventListener("click", () => {
-          if (n) startSession({ items: buildPracticeSet((q) => q.skill === s.nom, "Max"), mode: "immediate", exam: null });
-        });
-        sk.appendChild(node);
+        const id = s.nom.split(" ")[0];
+        const lesson = LESSONS.find((l) => l.id === id);
+        const li = el(`<li class="lesson-row${read.has(id) ? " done" : ""}${lesson ? "" : " missing"}">
+          <span class="lr-check">${read.has(id) ? "✓" : ""}</span>
+          <span class="lr-id">${esc(id)}</span>
+          <span class="lr-body"><b>${esc(s.nom.slice(id.length + 1))}</b><span>${lesson ? fmt(lesson.tldr) : "Lesson not written yet"}</span></span>
+        </li>`);
+        if (lesson) li.addEventListener("click", () => openLesson(id));
+        ol.appendChild(li);
       });
-      const keys = dom.querySelector(".keys");
-      d.cles.forEach((k) => keys.appendChild(el(`<li>${fmt(k)}</li>`)));
-      dom.querySelector(".dom-head").addEventListener("click", () => dom.classList.toggle("open"));
-      dom.querySelector(".btnQuizDom").addEventListener("click", () => {
+      block.querySelector("button").addEventListener("click", () => {
         if (nQ) startSession({ items: buildPracticeSet((q) => q.domain === d.id, 20), mode: "immediate", exam: null });
       });
-      wrap.appendChild(dom);
+      doms.appendChild(block);
     });
-    openDomain = null;
     app.appendChild(wrap);
+    if (openDomain) { const t = wrap.querySelector("#dom-" + openDomain); if (t) t.scrollIntoView(); openDomain = null; }
   };
+
+  function openLesson(id) {
+    setActive("learn"); app.innerHTML = ""; window.scrollTo(0, 0);
+    const L = LESSONS.find((l) => l.id === id);
+    const { d, s } = skillOf(id);
+    const order = lessonOrder();
+    const i = order.indexOf(id);
+    const prevId = order[i - 1], nextId = order[i + 1];
+    const read = readSet();
+    const nQ = QUESTIONS.filter((q) => q.skill === s.nom).length;
+    const off = s.official || {};
+    const offList = (t, arr) => (arr && arr.length ? `<div class="off-title">${t}</div><ul class="off-list">${arr.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : "");
+
+    const wrap = el(`<article class="lesson">
+      <div class="crumbs"><a href="#" data-go="learn">Learn</a> › <a href="#" data-dom="${d.id}">D${d.id} · ${esc(d.nom)}</a> › ${esc(id)}</div>
+      <h1>${esc(s.nom)}</h1>
+      <p class="lead">${esc(s.desc)}</p>
+      <div class="card tldr"><span class="tldr-tag">In one sentence</span>${fmt(L.tldr)}</div>
+      ${diagramHtml(L.diagram)}
+      <h2>Key points</h2>
+      <ul class="kp">${L.points.map((p) => `<li>${fmt(p)}</li>`).join("")}</ul>
+      ${L.table ? `<div class="lt-wrap"><table class="lt"><thead><tr>${L.table.head.map((h) => `<th>${fmt(h)}</th>`).join("")}</tr></thead>
+        <tbody>${L.table.rows.map((r) => `<tr>${r.map((c) => `<td>${fmt(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : ""}
+      ${L.code ? `<pre class="lcode"><code>${esc(L.code)}</code></pre>` : ""}
+      <h2>Exam traps</h2>
+      <div class="traps">${L.traps.map((t) => `<div class="trap"><div class="trap-x">✗ ${fmt(t.wrong)}</div><div class="trap-v">✓ ${fmt(t.right)}</div></div>`).join("")}</div>
+      <div class="card exam-tip"><span class="tldr-tag">In the exam</span>${fmt(L.exam)}</div>
+      ${off.knowledge || off.skills ? `<details class="off"><summary>Exam guide wording (verbatim)</summary>${offList("Knowledge of", off.knowledge)}${offList("Skills in", off.skills)}</details>` : ""}
+      <h2>Check yourself</h2>
+      <div id="check"></div>
+      ${L.sources && L.sources.length ? `<div class="sources"><span class="hint">Sources:</span> ${L.sources.map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)}</a>`).join(" · ")}</div>` : ""}
+      <div class="lesson-nav">
+        <button class="btn ghost" id="prevL"${prevId ? "" : " disabled"}>← ${prevId ? esc(prevId) : "Previous"}</button>
+        <button class="btn${read.has(id) ? " ghost" : ""}" id="markL">${read.has(id) ? "✓ Read — mark unread" : "Mark as read"}</button>
+        <button class="btn ghost" id="nextL"${nextId ? "" : " disabled"}>${nextId ? esc(nextId) : "Next"} →</button>
+      </div>
+    </article>`);
+
+    wrap.querySelector("[data-go]").addEventListener("click", (e) => { e.preventDefault(); go("learn"); });
+    wrap.querySelector("[data-dom]").addEventListener("click", (e) => { e.preventDefault(); openDomain = d.id; go("learn"); });
+    if (prevId) wrap.querySelector("#prevL").addEventListener("click", () => openLesson(prevId));
+    if (nextId) wrap.querySelector("#nextL").addEventListener("click", () => openLesson(nextId));
+    wrap.querySelector("#markL").addEventListener("click", () => {
+      const st = load(); const r = new Set(st.read || []);
+      if (r.has(id)) r.delete(id); else r.add(id);
+      st.read = [...r]; save(st);
+      if (!read.has(id) && nextId) openLesson(nextId); else openLesson(id);
+    });
+    renderCheck(wrap.querySelector("#check"), s, nQ);
+    app.appendChild(wrap);
+  }
+
+  /* One random question from this sub-skill, corrected in place. */
+  function renderCheck(host, s, nQ) {
+    const pool = QUESTIONS.filter((q) => q.skill === s.nom);
+    if (!pool.length) { host.innerHTML = `<p class="hint">No question for this lesson yet.</p>`; return; }
+    const q = prepareItems([pool[Math.floor(Math.random() * pool.length)]])[0];
+    const picked = new Set();
+    const letters = "ABCDEFGH";
+    const card = el(`<div class="card">
+      <div class="q-text">${fmt(q.q)}</div>
+      <div class="opts">${q.options.map((o, i) => `<div class="opt${q._multi ? " multi" : ""}" data-idx="${i}"><span class="mk">${letters[i]}</span><span class="opt-txt">${fmt(o)}</span></div>`).join("")}</div>
+      <div class="expl-box"></div>
+      <div class="btn-row"><button class="btn" disabled>Check answer</button>
+        <button class="btn ghost">Practise all ${nQ} questions</button><button class="btn ghost">Another question</button></div>
+    </div>`);
+    const [checkBtn, allBtn, anotherBtn] = card.querySelectorAll(".btn-row .btn");
+    let checked = false;
+    card.querySelector(".opts").addEventListener("click", (e) => {
+      const o = e.target.closest(".opt"); if (!o || checked) return;
+      const idx = +o.dataset.idx;
+      if (q._multi) { if (picked.has(idx)) picked.delete(idx); else picked.add(idx); } else { picked.clear(); picked.add(idx); }
+      card.querySelectorAll(".opt").forEach((x) => x.classList.toggle("sel", picked.has(+x.dataset.idx)));
+      checkBtn.disabled = !picked.size;
+    });
+    checkBtn.addEventListener("click", () => {
+      checked = true;
+      const ok = arrEq([...picked], q.correct);
+      card.querySelectorAll(".opt").forEach((x) => {
+        const i = +x.dataset.idx;
+        x.classList.remove("sel"); x.classList.add("locked");
+        if (q.correct.includes(i)) x.classList.add("correct"); else if (picked.has(i)) x.classList.add("wrong");
+      });
+      card.querySelector(".expl-box").appendChild(el(`<div class="expl ${ok ? "ok" : "ko"}"><strong>${ok ? "✓ Correct" : "✗ Incorrect"}</strong> ${fmt(q.expl)}</div>`));
+      checkBtn.disabled = true;
+      const st = load(); const w = new Set(st.wrong || []);
+      if (ok) w.delete(q.id); else w.add(q.id);
+      st.wrong = [...w]; save(st);
+    });
+    allBtn.addEventListener("click", () => startSession({ items: buildPracticeSet((x) => x.skill === s.nom, "Max"), mode: "immediate", exam: null }));
+    anotherBtn.addEventListener("click", () => { host.innerHTML = ""; renderCheck(host, s, nQ); });
+    host.appendChild(card);
+  }
 
   /* ============================================================================
      SCENARIOS (CCAR-F only)
@@ -820,62 +944,6 @@
   }
 
   /* ============================================================================
-     FLASHCARDS
-     ========================================================================= */
-  const fcState = { list: null, i: 0, domain: null };
-  views.flashcards = function () {
-    if (!fcState.list) fcState.list = shuffle(FLASHCARDS);
-    const wrap = el(`<div>
-      <h1>Flashcards</h1>
-      <p class="lead">Click the card to flip it. ${FLASHCARDS.length} key concepts.</p>
-      <div class="chips" id="fcFilter"><button class="chip on" data-d="all">All</button></div>
-      <div class="spacer"></div>
-      <div class="fc-wrap"><div class="fc" id="card"></div></div>
-      <div class="fc-nav">
-        <button class="btn ghost" id="prev">← Previous</button>
-        <span class="fc-count" id="count"></span>
-        <button class="btn" id="nextc">Next →</button>
-      </div>
-      <div class="fc-nav" style="justify-content:center"><button class="btn ghost" id="shuf">Shuffle</button></div>
-    </div>`);
-    const filter = wrap.querySelector("#fcFilter");
-    DOMAINS.forEach((d) => filter.appendChild(el(`<button class="chip" data-d="${d.id}">D${d.id}</button>`)));
-    const cardEl = wrap.querySelector("#card");
-    const countEl = wrap.querySelector("#count");
-    const currentList = () => (fcState.domain ? fcState.list.filter((c) => c.domain === fcState.domain) : fcState.list);
-
-    function render() {
-      const list = currentList();
-      if (!list.length) { cardEl.innerHTML = ""; countEl.textContent = "0 / 0"; return; }
-      if (fcState.i >= list.length) fcState.i = 0;
-      const c = list[fcState.i]; const d = domain(c.domain);
-      cardEl.classList.remove("flip");
-      cardEl.innerHTML = "";
-      cardEl.appendChild(el(`<div class="fc-face fc-front">
-        <div class="fc-tag" style="color:${d.couleur}">D${d.id} · ${esc(d.nom)}</div>
-        <div class="fc-recto">${fmt(c.recto)}</div>
-        <div class="fc-hint">Click to reveal</div></div>`));
-      cardEl.appendChild(el(`<div class="fc-face fc-back">
-        <div class="fc-tag" style="color:${d.couleur}">Answer</div>
-        <div class="fc-verso">${fmt(c.verso)}</div></div>`));
-      countEl.textContent = `${fcState.i + 1} / ${list.length}`;
-    }
-    cardEl.addEventListener("click", () => cardEl.classList.toggle("flip"));
-    wrap.querySelector("#prev").addEventListener("click", () => { const l = currentList(); if (l.length) { fcState.i = (fcState.i - 1 + l.length) % l.length; render(); } });
-    wrap.querySelector("#nextc").addEventListener("click", () => { const l = currentList(); if (l.length) { fcState.i = (fcState.i + 1) % l.length; render(); } });
-    wrap.querySelector("#shuf").addEventListener("click", () => { fcState.list = shuffle(FLASHCARDS); fcState.i = 0; render(); });
-    filter.addEventListener("click", (e) => {
-      const b = e.target.closest(".chip"); if (!b) return;
-      filter.querySelectorAll(".chip").forEach((x) => x.classList.remove("on"));
-      b.classList.add("on");
-      fcState.domain = b.dataset.d === "all" ? null : +b.dataset.d;
-      fcState.i = 0; render();
-    });
-    app.appendChild(wrap);
-    render();
-  };
-
-  /* ============================================================================
      CHEAT SHEET
      ========================================================================= */
   views.cheatsheet = function () {
@@ -897,7 +965,7 @@
   };
 
   /* ---------- dev helper: parity checks from tools/ ---------- */
-  window.CCAR_DEV = { allocateByWeight, examAllocation, scaleScore, prepareItems, buildExamSet, buildDiagnostic };
+  window.CCAR_DEV = { allocateByWeight, examAllocation, scaleScore, prepareItems, buildExamSet, buildDiagnostic, openLesson };
 
   go("home");
 })();

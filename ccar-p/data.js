@@ -2,8 +2,8 @@
    CCAR-P revision data — Claude Certified Architect – Professional
    Source: public Exam Guide v1.0 (July 2026) + Anthropic documentation.
    Verbatim guide content lives in blueprint.js (frozen). This file holds what
-   we authored: exam facts, domain summaries, takeaways, flashcards.
-   Load order (index.html): blueprint.js → q-*.js → data.js → ../shared/app.js
+   we authored: exam facts, domain summaries, takeaways. Lessons: lessons-d*.js.
+   Load order (index.html): blueprint.js → q-*.js → lessons-*.js → data.js → ../shared/app.js
    ============================================================================ */
 (function () {
   const BP = window.CCARP_BLUEPRINT;
@@ -135,44 +135,12 @@
     skills: d.objectives.map((o) => ({ nom: `${o.id} ${o.short}`, desc: o.title })),
   }));
 
-  const FLASHCARDS = [
-    { domain: 1, recto: "Workflow or agent?", verso: "Workflow when the steps can be written down in advance — cheaper, faster, debuggable. Agent when they cannot and errors are recoverable." },
-    { domain: 1, recto: "The five workflow patterns", verso: "Prompt chaining · routing · parallelization (sectioning / voting) · orchestrator-workers · evaluator-optimizer." },
-    { domain: 1, recto: "The augmented LLM", verso: "One model call enhanced with retrieval, tools and memory — the building block of every pattern." },
-    { domain: 1, recto: "Agent go/no-go criteria", verso: "Complexity · value · viability · cost of error. A 'no' on any one → stay simpler." },
-    { domain: 1, recto: "Business value pillars", verso: "Efficiency · transformation · productivity · cost · performance SLAs. Tie each design choice to one." },
-    { domain: 2, recto: "Which tier for what?", verso: "Haiku: volume and speed. Sonnet: balanced production default. Opus: hardest reasoning, long-horizon agents. Confirm with an eval." },
-    { domain: 2, recto: "Same 8K-token prefix on every call", verso: "Put the static part first and enable prompt caching — cuts cost and time-to-first-token." },
-    { domain: 2, recto: "Zero-shot, few-shot, chain-of-thought", verso: "Zero-shot: simple, well-specified tasks. Few-shot: format and ambiguous cases. CoT / thinking: multi-step reasoning, at a latency cost." },
-    { domain: 2, recto: "What Skills give you", verso: "Reusable instructions and resources that load on demand: only the short description sits in context until needed." },
-    { domain: 3, recto: "Least privilege for an agent", verso: "Remove tools the role never needs. Confirmation prompts and logging are compensating/detective, not removal." },
-    { domain: 3, recto: "Whose credentials should a user-facing agent use?", verso: "The user's delegated, scoped credentials — not a shared admin key (confused deputy, no per-user audit)." },
-    { domain: 3, recto: "Hybrid retrieval", verso: "Lexical (BM25) for exact terms and IDs + semantic embeddings for paraphrase, then rerank." },
-    { domain: 3, recto: "When not to build RAG", verso: "When the knowledge base is small enough to fit in the prompt — include it and cache it." },
-    { domain: 3, recto: "MCP vs API/CLI vs agent-to-agent", verso: "MCP: reusable tools/data across hosts. API/CLI: one narrow integration. A2A: delegating to independent peer agents." },
-    { domain: 3, recto: "Progressive discovery", verso: "Load names/descriptions first, details on demand (Skills, tool search, resource lists) instead of stuffing every schema in every prompt." },
-    { domain: 4, recto: "Three grading methods", verso: "Code-based (fast, exact) · LLM-as-judge with rubric (scales, calibrate it) · human (gold standard, slow)." },
-    { domain: 4, recto: "Confident wrong answers after a document refresh", verso: "Look at retrieval/indexing first — stale or broken index, mismatched embeddings." },
-    { domain: 4, recto: "A/B test hygiene", verso: "One change, metric and sample size fixed in advance, guard metrics, offline eval first." },
-    { domain: 4, recto: "Why segment eval results?", verso: "An overall score can hide a failing segment (document type, language, customer tier)." },
-    { domain: 5, recto: "Indirect prompt injection", verso: "Instructions hidden in retrieved documents or tool output. Treat that content as data and limit what the agent can do with it." },
-    { domain: 5, recto: "HIPAA prerequisite", verso: "A Business Associate Agreement and an eligible configuration before any PHI is processed." },
-    { domain: 5, recto: "GDPR right to erasure — the LLM trap", verso: "Personal data also lives in logs, caches, eval sets and vector stores — design deletion for all of them." },
-    { domain: 5, recto: "Where to put humans in the loop", verso: "Irreversible or high-value actions, low-confidence or contradictory cases, plus sampling of the auto-approved stream." },
-    { domain: 6, recto: "Structured discovery checklist", verso: "Users and workflow · success metrics · data and sensitivity · constraints (latency, cost, compliance) · integrations · risk tolerance." },
-    { domain: 6, recto: "How to communicate a trade-off", verso: "Options in business terms (cost, time, risk, quality) with a clear recommendation." },
-    { domain: 6, recto: "An SLA for an LLM feature", verso: "A measurable target, how it is measured, and what happens on a miss — not 'always correct'." },
-    { domain: 7, recto: "Sharing a Claude Code setup with a team", verso: "Commit CLAUDE.md, `.claude/settings.json`, `.mcp.json`, shared skills; personal settings stay in user/local files." },
-    { domain: 7, recto: "Enforcing an org-wide rule in Claude Code", verso: "Managed settings — they override project and user settings. `deny` rules win over `allow`." },
-    { domain: 7, recto: "First debugging step for odd behaviour", verso: "Check what the model actually had in context (`/context`, `/memory`, `/mcp`) before rewriting the prompt." },
-  ];
-
   window.CERT = {
     EXAM_INFO,
     DOMAINS,
     SCENARIOS: null,
     QUESTIONS: window.CCARP_QUESTIONS || [],
-    FLASHCARDS,
+    LESSONS: window.CCARP_LESSONS || [],
     PREP: BP.prep,
   };
   window.CCARP = window.CERT;
