@@ -308,7 +308,7 @@
   };
   function diagramHtml(g) {
     if (!g || !DIAGRAMS[g.kind]) return "";
-    return `<figure class="dg dg-${g.kind}">${g.title ? `<figcaption>${fmt(g.title)}</figcaption>` : ""}
+    return `<figure class="dg dg-k-${g.kind}">${g.title ? `<figcaption>${fmt(g.title)}</figcaption>` : ""}
       ${DIAGRAMS[g.kind](g)}${g.caption ? `<p class="dg-cap">${fmt(g.caption)}</p>` : ""}</figure>`;
   }
 
