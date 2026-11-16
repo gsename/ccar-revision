@@ -3,7 +3,8 @@
    Stems and options are VERBATIM. FROZEN: never reword. The explanations are
    ours, rewritten without option-letter references (options are shuffled).
    ============================================================================ */
-(window.CCARP_QUESTIONS = window.CCARP_QUESTIONS || []).push(
+window.CCARP_QUESTIONS = window.CCARP_QUESTIONS || [];
+window.CCARP_QUESTIONS.push(
   {
     id: "P3.1-S1", domain: 3, skill: "3.1 Capability bloat", official: true,
     kind: "scenario", difficulty: 2, src: "exam-guide-p-s8",
