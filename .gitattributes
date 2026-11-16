@@ -1,0 +1,9 @@
+# Store text files with LF in the repository, check them out native on Windows.
+# Without this, a clone on Linux or macOS produces a whole-file diff on every
+# source file purely from line endings.
+* text=auto
+
+*.md   text diff=markdown
+*.js   text
+*.css  text
+*.html text

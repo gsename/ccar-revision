@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CCAR-F Revision</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>" />
+  <link rel="stylesheet" href="../shared/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand home-link" href="../index.html" title="Back to both certifications">
+      <span class="brand-mark">✦</span>
+      <div>
+        <strong>CCAR-F Revision</strong>
+        <span class="brand-sub">Claude Certified Architect – Foundations</span>
+      </div>
+    </a>
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-view="home">Home</button>
+      <button class="tab" data-view="domains">Domains</button>
+      <button class="tab" data-view="scenarios">Scenarios</button>
+      <button class="tab" data-view="exam">Mock exam</button>
+      <button class="tab" data-view="quiz">Practice</button>
+      <button class="tab" data-view="flashcards">Flashcards</button>
+      <button class="tab" data-view="cheatsheet">Cheat sheet</button>
+    </nav>
+    <button class="theme-toggle" id="themeToggle" title="Toggle light/dark" aria-label="Toggle theme">🌙</button>
+  </header>
+
+  <main id="app"></main>
+
+  <footer class="foot">
+    <span>Unofficial study aid — built from the public CCAR-F Exam Guide v1.0 (July 2026) and the Anthropic documentation.
+    The practice questions are <strong>not</strong> from the official question bank; items badged
+    “exam-guide sample” are the examples published in the guide itself. Runs fully offline.</span>
+  </footer>
+
+  <!-- Load order matters: blueprint (frozen guide text) → question files → data.js (assembles window.CERT) → engine. -->
+  <script src="blueprint.js"></script>
+  <script src="q-samples.js"></script>
+  <script src="q-d1a.js"></script>
+  <script src="q-d1b.js"></script>
+  <script src="q-d2.js"></script>
+  <script src="q-d3.js"></script>
+  <script src="q-d4.js"></script>
+  <script src="q-d5.js"></script>
+  <script src="data.js"></script>
+  <script src="../shared/app.js"></script>
+</body>
+</html>

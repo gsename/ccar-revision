@@ -1,0 +1,19 @@
+# Local-only authoring aid. tools/facts.md is a distillation of Anthropic
+# reference documentation (model names, pricing, beta header identifiers) used
+# to fact-check the question bank. It is deliberately kept out of the public
+# repo; the app does not need it at runtime.
+tools/facts.md
+
+# OS and editor cruft
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+*.swp
+*~
+.vscode/
+.idea/
+
+# OneDrive sync artefacts
+*.tmp
+~$*

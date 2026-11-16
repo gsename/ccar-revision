@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CCAR Revision</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>" />
+  <link rel="stylesheet" href="shared/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">✦</span>
+      <div>
+        <strong>CCAR Revision</strong>
+        <span class="brand-sub">Claude Certified Architect — Foundations &amp; Professional</span>
+      </div>
+    </div>
+    <span></span>
+    <button class="theme-toggle" id="themeToggle" title="Toggle light/dark" aria-label="Toggle theme">🌙</button>
+  </header>
+
+  <main id="app">
+    <h1>Pick a certification</h1>
+    <p class="lead">Two offline study apps with blueprint-weighted mock exams, practice by domain and objective,
+      a 10-question diagnostic, weak-spot drills, flashcards and a cheat sheet. Progress stays in this browser.</p>
+
+    <div class="cert-grid">
+      <a class="card cert-card" href="ccar-f/index.html">
+        <h2>CCAR-F · Foundations</h2>
+        <span class="hint" id="last-f">No mock exam yet</span>
+        <ul>
+          <li>60 items · 120 min · 720 / 1,000 to pass</li>
+          <li>4 scenarios drawn from a bank of 6</li>
+          <li>Agent SDK, Claude Code, MCP, prompting, context</li>
+        </ul>
+      </a>
+      <a class="card cert-card" href="ccar-p/index.html">
+        <h2>CCAR-P · Professional</h2>
+        <span class="hint" id="last-p">No mock exam yet</span>
+        <ul>
+          <li>63 items · 120 min · 720 / 1,000 to pass</li>
+          <li>7 domains, no scenario structure</li>
+          <li>Architecture, integration, evals, governance, stakeholders</li>
+        </ul>
+      </a>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <span>Unofficial study aid built from the public Exam Guides v1.0 (July 2026) and the Anthropic documentation.
+    The practice questions are <strong>not</strong> from the official question banks. Runs fully offline.</span>
+  </footer>
+
+  <script>
+    (function () {
+      const btn = document.getElementById("themeToggle");
+      const apply = (t) => { document.documentElement.setAttribute("data-theme", t); btn.textContent = t === "dark" ? "☀️" : "🌙"; };
+      let t = null;
+      try { t = localStorage.getItem("ccar_theme"); } catch (e) { /* storage blocked */ }
+      apply(t || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+      btn.addEventListener("click", () => {
+        const n = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        apply(n);
+        try { localStorage.setItem("ccar_theme", n); } catch (e) { /* storage blocked */ }
+      });
+      [["f", "ccar_f_state_v1"], ["p", "ccar_p_state_v1"]].forEach(([k, key]) => {
+        try {
+          const a = (JSON.parse(localStorage.getItem(key)) || {}).attempts || [];
+          if (a.length) document.getElementById("last-" + k).textContent =
+            `Last mock exam: ${a[0].scaled} (${a[0].pass ? "pass" : "below 720"}) · ${a.length} attempt(s)`;
+        } catch (e) { /* storage blocked or empty */ }
+      });
+    })();
+  </script>
+</body>
+</html>
