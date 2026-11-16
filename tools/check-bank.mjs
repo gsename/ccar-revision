@@ -668,24 +668,50 @@ function checkScenarios(items, ctx) {
 }
 
 /* ==========================================================================
-   The reverse tell (added; a new check). Over-correcting the length rule
-   makes the correct answer the SHORTEST option, which a reader-who-knows-
-   nothing exploits just as well. Report it next to the longest score.
+   Length tells against chance (added; a new check). Over-correcting the
+   length rule makes the correct answer the SHORTEST option, which a reader
+   who knows nothing exploits just as well. Both strategies are scored the
+   way the runtime experiences them: options are shuffled, so equal lengths
+   are broken at random (expected value), not by authored position. Each
+   score must stay within TELL_MARGIN points of blind guessing.
    ========================================================================== */
-function checkShortest(items) {
+const TELL_MARGIN = 3;
+const comb = (n, k) => { let r = 1; for (let i = 0; i < k; i++) r = (r * (n - i)) / (i + 1); return r; };
+
+/** Probability that picking the k shortest (dir=1) or longest (dir=-1)
+    options, ties broken at random, selects exactly the correct set. */
+function pickProbability(q, dir) {
+  const k = q.correctIdx.length;
+  const lens = q.options.map((o) => o.length);
+  const v = [...lens].sort((a, b) => dir * (a - b))[k - 1];      // boundary length
+  const before = lens.map((l, i) => i).filter((i) => dir * (lens[i] - v) < 0);
+  const tied = lens.map((l, i) => i).filter((i) => lens[i] === v);
+  if (!before.every((i) => q.correctIdx.includes(i))) return 0;
+  const need = k - before.length;
+  const tiedCorrect = tied.filter((i) => q.correctIdx.includes(i)).length;
+  if (tiedCorrect < need) return 0;
+  return comb(tiedCorrect, need) / comb(tied.length, need);
+}
+
+function checkLengthTells(items) {
   const choice = items.filter((q) => q.options && q.correctIdx.every((c) => c >= 0));
   if (choice.length < 20) return [];
-  let hit = 0;
+  let chance = 0, shortest = 0, longest = 0;
   for (const q of choice) {
-    const n = q.correctIdx.length;
-    const pick = q.options.map((o, i) => ({ i, len: o.length }))
-      .sort((a, b) => a.len - b.len || a.i - b.i).slice(0, n).map((x) => x.i);
-    if (pick.every((i) => q.correctIdx.includes(i))) hit++;
+    chance += 1 / comb(q.options.length, q.correctIdx.length);
+    shortest += pickProbability(q, 1);
+    longest += pickProbability(q, -1);
   }
-  const score = (hit / choice.length) * 100;
-  if (score > 45) rule(`always-pick-the-shortest scores ${score.toFixed(1)}% — the bank leaks its answers`);
-  return [`
-  ALWAYS-PICK-THE-SHORTEST SCORE: ${hit}/${choice.length} = ${score.toFixed(1)}%`];
+  const pct = (x) => (x / choice.length) * 100;
+  const out = ["\nLength tells vs blind guessing (ties broken at random, as after the runtime shuffle)",
+    `  blind guessing          ${pct(chance).toFixed(1)}%`,
+    `  always pick the longest ${pct(longest).toFixed(1)}%`,
+    `  always pick the shortest ${pct(shortest).toFixed(1)}%`];
+  for (const [name, v] of [["longest", longest], ["shortest", shortest]]) {
+    if (pct(v) > pct(chance) + TELL_MARGIN)
+      rule(`always-pick-the-${name} scores ${pct(v).toFixed(1)}%, more than ${TELL_MARGIN} points above blind guessing (${pct(chance).toFixed(1)}%)`);
+  }
+  return out;
 }
 
 /* ==========================================================================
@@ -710,7 +736,7 @@ const seen = new Set();
 for (const q of items) checkItem(q, seen, ctx);
 checkTyped(items, ctx);
 console.log(aggregate(items, ctx).join("\n"));
-console.log(checkShortest(items).join("\n"));
+console.log(checkLengthTells(items).join("\n"));
 console.log(checkScenarios(items, ctx).join("\n"));
 
 console.log(`\n${"=".repeat(70)}`);

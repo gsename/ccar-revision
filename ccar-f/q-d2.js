@@ -119,7 +119,7 @@ window.CCARF_QUESTIONS.push(
     q: "The payment gateway behind the `process_refund` MCP tool times out. The tool was called correctly, with valid arguments. How should the MCP server report this failure to the agent?",
     options: [
       "As a JSON-RPC protocol error, so the client knows at the transport level that the refund call never completed",
-      "As a tool result with `isError: true` whose content says it was a transient timeout that can be retried",
+      "As a tool result with `isError: true` whose content says it was a transient timeout that can be retried safely",
       "As a tool result containing the text \"Operation failed\", so the agent knows it should not continue the refund",
       "As a successful tool result holding an empty refund record, so the agent's loop is not interrupted by the error",
     ],
@@ -358,7 +358,7 @@ window.CCARF_QUESTIONS.push(
     q: "A developer wants to try an experimental MCP server in every project they work on, without it appearing for teammates or being committed to any repository. Which scope should they use?",
     options: [
       "Local scope, the default, which keeps the server private to the developer and makes it available in every one of their projects",
-      "User scope (`claude mcp add --scope user`), stored in `~/.claude.json` and available across all of their projects",
+      "User scope (`claude mcp add --scope user`), stored in `~/.claude.json` kept private and available across all of their projects",
       "Project scope in `.mcp.json`, with a note asking teammates to deny the server when Claude Code prompts them to approve it",
       "Project scope in `.mcp.json` on a personal branch, with the server's API key written directly into the file for convenience",
     ],
@@ -383,9 +383,9 @@ window.CCARF_QUESTIONS.push(
     kind: "scenario", difficulty: 2, src: "cc-mcp",
     q: "The support agent makes many exploratory `search_policies` calls to discover which of 400 policy documents exist before it finds the relevant one. The library changes weekly and is far too large to place in every prompt. What should the policy MCP server add?",
     options: [
-      "A policy catalog exposed as MCP resources, so the agent can see which documents exist without exploratory calls",
+      "A policy catalog exposed as MCP resources, so the agent can see which documents exist without any exploratory calls",
       "An MCP prompt for each policy area, so the agent can pick the matching template whenever a new customer question arrives",
-      "More narrowly scoped search tools, one per policy area, so each exploratory call returns fewer and more relevant results",
+      "More narrowly scoped search tools, one per policy area, so each exploratory call returns fewer results",
       "A new search tool over fixed 512-token chunks of every policy, using pure vector similarity and re-indexed every weekend",
     ],
     correct: 0, outdated: 3,
@@ -452,7 +452,7 @@ window.CCARF_QUESTIONS.push(
       "Run an interactive session on the CI runner once to approve the project server, since `-p` cannot load an unapproved server",
       "Re-add the Jira server in user scope on the runner, since project-scoped servers are never loaded at all in print mode",
       "Write the token directly into `.mcp.json` on a CI-only branch, so the job no longer depends on the runner's environment",
-      "Expose the token as a CI secret mapped to the job's `JIRA_TOKEN` environment variable, so the expansion resolves",
+      "Expose the token as a CI secret mapped to the job's `JIRA_TOKEN` environment variable, so the `${VAR}` expansion resolves",
     ],
     correct: 3, outdated: 2,
     expl: "`${JIRA_TOKEN}` is expanded from the environment, so the CI job must provide that variable from its secret store. Approving the server interactively is tempting, but print-mode and SDK runs load project servers without asking, so approval is not the blocker, and committing the token defeats the point of expansion.",
@@ -517,7 +517,7 @@ window.CCARF_QUESTIONS.push(
     q: "A wrapper module `utils/index.ts` re-exports `formatDate` under the names `fmt` and `toDisplayDate`. An engineer wants every real usage of the function before deprecating it. Which three steps should the agent take? (Select 3)",
     options: [
       "Glob for files whose names contain `formatDate` to find the modules that use the function",
-      "Read the wrapper module to list every name under which the function is exported",
+      "Read the wrapper module first to list every name under which the function is re-exported",
       "Run `grep -r formatDate` through Bash for the original name only, then stop searching",
       "Grep for each exported name across the codebase, including both of the aliases",
       "Read the files Grep returns to confirm real calls rather than comments or strings",

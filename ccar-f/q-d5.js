@@ -126,7 +126,7 @@ window.CCARF_QUESTIONS.push(
     q: "Policy allows a price adjustment when your own site lowers an item's price within 14 days of purchase. A customer asks you to match a lower price at a competitor. Policy says nothing about competitors, and the team is under pressure to raise first-contact resolution. What should the agent do?",
     options: [
       "Grant the adjustment by analogy with the own-site rule, since the customer's intent is the same and resolving it in-conversation improves the target.",
-      "Escalate the request, because the policy is silent on competitor price matching and the case therefore falls into a genuine policy gap.",
+      "Escalate the request to a human, because the policy is silent on competitor price matching and the case therefore falls into a genuine policy gap.",
       "Decline the request, because anything that the written policy does not explicitly allow should be treated by the agent as explicitly forbidden.",
       "Have the agent rate its confidence in a decision from 1 to 10 and escalate only when the self-reported score falls below the configured threshold.",
     ],

@@ -97,14 +97,16 @@ exams therefore share about **25%** of their items at full length, and about **8
 | | CCAR-F | CCAR-P |
 |---|---|---|
 | Errors (strict mode) | 0 | 0 |
-| Score from always picking the **longest** option | 20.0% | 17.9% |
-| Score from always picking the **shortest** option | 27.9% | 19.4% |
+| Blind guessing (reference) | 23.6% | 23.8% |
+| Score from always picking the **longest** option | 19.7% | 19.5% |
+| Score from always picking the **shortest** option | 20.8% | 19.6% |
 | Longest option is the correct one (single answer) | 18.4% | 18.4% |
 | Multiple-response items | 22 (9.2%) | 21 (8.3%) |
 | Scenario / recall mix | 73 / 27 | 71 / 29 |
 
-A reader who knows nothing about the content therefore scores about what blind guessing gives (around 24%), far
-below the 68.9% pass threshold. The only warnings left are informational: some task statements and
+Options of equal length are scored as the runtime shuffle sees them: as a random pick among the tied options. The
+validator fails if either strategy beats blind guessing by more than 3 points. Both currently score *below*
+blind guessing, so option length gives nothing away: the pass threshold is 68.9%. The only warnings left are informational: some task statements and
 objectives have fewer than 8 items, because each is under 3% of the exam.
 
 Every item:
