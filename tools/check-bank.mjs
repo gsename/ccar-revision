@@ -668,6 +668,27 @@ function checkScenarios(items, ctx) {
 }
 
 /* ==========================================================================
+   The reverse tell (added; a new check). Over-correcting the length rule
+   makes the correct answer the SHORTEST option, which a reader-who-knows-
+   nothing exploits just as well. Report it next to the longest score.
+   ========================================================================== */
+function checkShortest(items) {
+  const choice = items.filter((q) => q.options && q.correctIdx.every((c) => c >= 0));
+  if (choice.length < 20) return [];
+  let hit = 0;
+  for (const q of choice) {
+    const n = q.correctIdx.length;
+    const pick = q.options.map((o, i) => ({ i, len: o.length }))
+      .sort((a, b) => a.len - b.len || a.i - b.i).slice(0, n).map((x) => x.i);
+    if (pick.every((i) => q.correctIdx.includes(i))) hit++;
+  }
+  const score = (hit / choice.length) * 100;
+  if (score > 45) rule(`always-pick-the-shortest scores ${score.toFixed(1)}% — the bank leaks its answers`);
+  return [`
+  ALWAYS-PICK-THE-SHORTEST SCORE: ${hit}/${choice.length} = ${score.toFixed(1)}%`];
+}
+
+/* ==========================================================================
    Run
    ========================================================================== */
 const loaded = CONFIG.stack === "vanilla" ? loadVanilla() : loadJson();
@@ -689,6 +710,8 @@ const seen = new Set();
 for (const q of items) checkItem(q, seen, ctx);
 checkTyped(items, ctx);
 console.log(aggregate(items, ctx).join("\n"));
+console.log(checkShortest(items).join("\n"));
+console.log(checkScenarios(items, ctx).join("\n"));
 
 console.log(`\n${"=".repeat(70)}`);
 if (warns.length) { console.log(`\n${warns.length} warning(s):`); warns.forEach((w) => console.log(`  ! ${w}`)); }

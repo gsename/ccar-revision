@@ -100,10 +100,9 @@
      groups in the given order, shuffled within each group. */
   function groupByScenario(list, order) {
     if (!HAS_SCENARIOS) return shuffle(list);
-    const ids = order || [...new Set(list.map((q) => q.scenario))];
+    const rest = [...new Set(list.map((q) => q.scenario))].filter((sid) => !(order || []).includes(sid));
     const out = [];
-    ids.forEach((sid) => { out.push(...shuffle(list.filter((q) => q.scenario === sid))); });
-    out.push(...shuffle(list.filter((q) => !ids.includes(q.scenario))));
+    (order || []).concat(rest).forEach((sid) => { out.push(...shuffle(list.filter((q) => q.scenario === sid))); });
     return out;
   }
 
