@@ -4,7 +4,8 @@
    ours, rewritten without the guide's option-letter references because the
    app shuffles options at draw time.
    ============================================================================ */
-(window.CCARF_QUESTIONS = window.CCARF_QUESTIONS || []).push(
+window.CCARF_QUESTIONS = window.CCARF_QUESTIONS || [];
+window.CCARF_QUESTIONS.push(
   {
     id: "F1.4-S1", domain: 1, skill: "1.4 Workflow enforcement and handoff", scenario: 1, official: true,
     kind: "scenario", difficulty: 2, src: "exam-guide-f-s9",
