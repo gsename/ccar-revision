@@ -140,6 +140,7 @@
     SCENARIOS: BP.scenarios,
     QUESTIONS: window.CCARF_QUESTIONS || [],
     LESSONS: window.CCARF_LESSONS || [],
+    OVERVIEW: window.CCARF_OVERVIEW || null,
     PREP: BP.prep,
   };
   /* Namespace read by tools/check-bank.mjs. */

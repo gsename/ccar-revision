@@ -141,6 +141,7 @@
     SCENARIOS: null,
     QUESTIONS: window.CCARP_QUESTIONS || [],
     LESSONS: window.CCARP_LESSONS || [],
+    OVERVIEW: window.CCARP_OVERVIEW || null,
     PREP: BP.prep,
   };
   window.CCARP = window.CERT;

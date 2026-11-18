@@ -75,7 +75,7 @@ const ALLOWED_SOURCES = new Set([
 ]);
 
 const sandbox = { window: {} };
-const files = ["blueprint", ...Array.from({ length: CONF.lessons }, (_, i) => `lessons-d${i + 1}`)];
+const files = ["blueprint", ...Array.from({ length: CONF.lessons }, (_, i) => `lessons-d${i + 1}`), "overview"];
 for (const f of files) {
   const p = `${CONF.dir}/${f}.js`;
   try { vm.runInNewContext(fs.readFileSync(p, "utf8"), sandbox, { filename: p }); }
@@ -149,6 +149,56 @@ for (const L of lessons) {
   if (n > 520) err(`${at}: ${n} words — over the 520-word budget for a quick read`);
   L._words = n;
 }
+/* ==========================================================================
+   Big picture (overview.js): it must introduce the WHOLE course.
+   Every lesson is linked from it and every required theme is named.
+   ========================================================================== */
+const REQUIRED_THEMES = {
+  f: ["agentic loop", "stop_reason", "end_turn", "tool_use", "tool_result", "Messages API", "harness", "Agent SDK", "Claude Code",
+    "hook", "PreToolUse", "PostToolUse", "prerequisite", "handoff", "coordinator", "orchestrator", "subagent", "`Agent` tool", "fork",
+    "AgentDefinition", "decomposition", "prompt chaining", "session", "--resume", "fork_session", "MCP", "isError", "resource", ".mcp.json",
+    "tool_choice", "built-in", "Grep", "Glob", "CLAUDE.md", "@import", "/memory", ".claude/rules", "skill", "slash command", "context: fork",
+    "allowed-tools", "plan mode", "Explore", "claude -p", "--json-schema", "few-shot", "JSON schema", "nullable", "custom_id", "batch",
+    "multi-pass", "case-facts", "escalat", "scratchpad", "/compact", "manifest", "confidence", "stratified", "provenance", "interview"],
+  p: ["augmented LLM", "prompt chaining", "routing", "parallelization", "orchestrator-workers", "evaluator-optimizer", "agent go/no-go",
+    "Haiku", "Sonnet", "Opus", "zero-shot", "few-shot", "chain-of-thought", "prompt caching", "Skills", "RAG", "chunk", "rerank", "hybrid",
+    "embeddings", "MCP", "A2A", "least privilege", "delegated", "progressive discovery", "trace", "A/B", "hallucination", "injection", "drift",
+    "GDPR", "HIPAA", "FedRAMP", "bias", "fairness", "transparen", "human-in-the-loop", "ADR", "runbook", "SLA", "discovery", "handoff",
+    "Claude Code", "CLAUDE.md", "hooks", "permissions", "Message Batches"],
+}[CERT];
+const BLOCK_TYPES = new Set(["text", "diagram", "callout", "table", "themes"]);
+const DIAGRAM_KINDS = new Set([...Object.keys(DIAG), "nest", "trace"]);
+
+function checkOverview() {
+  const ov = sandbox.window[`${CONF.ns}_OVERVIEW`];
+  if (!ov) { err("overview.js: no overview defined"); return; }
+  for (const f of ["title", "teaser", "lead"]) if (!str(ov[f])) err(`overview: missing ${f}`);
+  const secIds = new Set();
+  for (const s of ov.sections || []) {
+    if (secIds.has(s.id)) err(`overview: duplicate section id ${s.id}`);
+    secIds.add(s.id);
+    if (!str(s.nav) || !str(s.title)) err(`overview section ${s.id}: needs nav and title`);
+    for (const b of s.blocks || []) {
+      if (!BLOCK_TYPES.has(b.type)) err(`overview section ${s.id}: unknown block type "${b.type}"`);
+      if (b.type === "diagram" && !DIAGRAM_KINDS.has(b.diagram && b.diagram.kind)) err(`overview section ${s.id}: unknown diagram kind`);
+      if (b.type === "table") b.rows.forEach((r) => { if (r.length !== b.head.length) err(`overview section ${s.id}: table row width differs from head`); });
+    }
+  }
+  const raw = JSON.stringify(ov);
+  const linked = new Set([...raw.matchAll(/\{\{(\d+\.\d+)\}\}/g)].map((m) => m[1]));
+  for (const m of raw.matchAll(/"id":"(\d+\.\d+)"/g)) linked.add(m[1]);
+  for (const m of raw.matchAll(/"ids":\[([^\]]*)\]/g)) for (const i of m[1].matchAll(/\d+\.\d+/g)) linked.add(i[0]);
+  for (const id of linked) if (!subIds.includes(id)) err(`overview: links to unknown lesson ${id}`);
+  const unlinked = subIds.filter((id) => !linked.has(id));
+  if (unlinked.length) err(`overview: lessons never linked: ${unlinked.join(", ")}`);
+  const text = raw.toLowerCase();
+  const absent = REQUIRED_THEMES.filter((t) => !text.includes(t.toLowerCase()));
+  if (absent.length) err(`overview: themes never mentioned: ${absent.join(", ")}`);
+  console.log(`\nBig picture — ${(ov.sections || []).length} sections · ${linked.size}/${subIds.length} lessons linked · ` +
+    `${REQUIRED_THEMES.length - absent.length}/${REQUIRED_THEMES.length} required themes named`);
+}
+checkOverview();
+
 const missing = subIds.filter((id) => !seen.has(id));
 if (missing.length) (STRICT ? err : warn)(`no lesson yet for: ${missing.join(", ")}`);
 

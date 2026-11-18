@@ -14,6 +14,9 @@ network. The pages run straight from the filesystem, and the same files are serv
 - **Home** — exam facts, blueprint weights, the guide's "How to Prepare" list, and your last mock score.
   Also two buttons: a **10-question diagnostic** (2 questions per domain, over 5 domains) and
   **Weak spots**.
+- **Big picture** (top of Learn) — one page that introduces every theme of the course before the lessons:
+  a clickable map of how the parts nest, one request followed step by step, which mechanism fits which job,
+  and a definition of every theme with what it connects to.
 - **Learn** — one short lesson per task statement (30 for CCAR-F) or objective (38 for CCAR-P), built
   to be read in about two minutes. Each lesson has:
   - the idea in one sentence, a **diagram**, the key points, and sometimes a table or a short code snippet;
@@ -189,11 +192,12 @@ which model tiers accept forced `tool_choice`.
 | `ccar-*/blueprint.js` | Verbatim exam-guide content (objectives, scenarios, prep list). Frozen. |
 | `ccar-*/q-samples.js` | The published sample questions (12 for CCAR-F, 3 for CCAR-P), verbatim. Frozen. |
 | `ccar-*/q-d*.js` | The practice bank, one file per domain (CCAR-F D1 is split in two) |
+| `ccar-*/overview.js` | The Big picture page |
 | `ccar-*/lessons-d*.js` | The Learn lessons, one file per domain |
 | `ccar-*/data.js` | Exam facts, domain summaries, takeaways; assembles `window.CERT` |
 | `tools/check-bank.mjs` | Bank validator (not loaded by the pages) |
 | `tools/file-stats.mjs` | Per-file authoring stats |
-| `tools/check-lessons.mjs` | Lesson validator: one lesson per sub-skill, diagram shape, length budget, verified source links |
+| `tools/check-lessons.mjs` | Lesson validator: one lesson per sub-skill, diagram shape, length budget, verified source links; the Big picture must link every lesson and name every required theme |
 | `.nojekyll` | Tells GitHub Pages to serve the files as-is |
 
 ## Sources

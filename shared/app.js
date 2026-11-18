@@ -7,6 +7,7 @@
 (function () {
   const { EXAM_INFO, DOMAINS, SCENARIOS, QUESTIONS, PREP } = window.CERT;
   const LESSONS = window.CERT.LESSONS || [];
+  const OVERVIEW = window.CERT.OVERVIEW || null;
   const app = document.getElementById("app");
   const tabs = document.getElementById("tabs");
 
@@ -27,7 +28,8 @@
   const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; };
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   /* esc first, then `identifier` -> <code> and **x** -> <strong>; escaping first means no injection. */
-  const fmt = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  const fmt = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\{\{(\d+\.\d+)\}\}/g, '<button type="button" class="lref" data-lesson="$1">$1</button>');   // {{1.5}} = link to lesson 1.5
   const shuffle = (a) => { const r = a.slice(); for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; } return r; };
   const domain = (id) => DOMAINS.find((d) => d.id === id);
   const scenario = (id) => (SCENARIOS || []).find((s) => s.id === id);
@@ -305,7 +307,25 @@
     decision: (g) => `<div class="dg-decision"><div class="dg-q">${fmt(g.question)}</div>
       <div class="dg-branches">${g.branches.map((b) => `<div class="dg-branch ${b.tone ? "t-" + b.tone : ""}">
         <small>${fmt(b.when)}</small><b>${fmt(b.then)}</b></div>`).join("")}</div></div>`,
+    /* Big-picture kinds: containers that literally nest, and a numbered walk-through. */
+    nest: (g) => `<div class="nest">${g.nodes.map((n) => nestNode(n, 0)).join("")}</div>`,
+    trace: (g) => `<ol class="trace">${g.steps.map((s, i) => `<li class="tr-step${s.inner ? " tr-in" : ""}">
+        <span class="tr-n">${i + 1}</span>
+        <div class="tr-body"><div class="tr-head"><span class="tr-who ${s.tone ? "t-" + s.tone : ""}">${esc(s.who)}</span><b>${fmt(s.title)}</b></div>
+        <p>${fmt(s.text)}</p></div></li>`).join("")}</ol>`,
   };
+  function nestNode(n, depth) {
+    if (n.arrow !== undefined) return `<div class="nest-arrow"><i>↓</i>${n.arrow ? `<small>${fmt(n.arrow)}</small>` : ""}</div>`;
+    const tone = n.tone ? "t-" + n.tone : "";
+    if (!n.children) {
+      const id = n.id;
+      const inner = `<b>${fmt(n.label)}</b>${n.sub ? `<span>${fmt(n.sub)}</span>` : ""}${id ? `<em class="lid">${esc(id)}</em>` : ""}`;
+      return id ? `<button type="button" class="nest-leaf ${tone}" data-lesson="${esc(id)}">${inner}</button>` : `<div class="nest-leaf ${tone}">${inner}</div>`;
+    }
+    return `<div class="nest-box d${Math.min(depth, 2)} ${n.col ? "col" : ""} ${tone}"${n.grow ? ` style="flex-grow:${+n.grow}"` : ""}>
+      <div class="nest-h"><b>${fmt(n.label)}</b>${n.sub ? `<span>${fmt(n.sub)}</span>` : ""}</div>
+      <div class="nest-kids">${n.children.map((c) => nestNode(c, depth + 1)).join("")}</div></div>`;
+  }
   function diagramHtml(g) {
     if (!g || !DIAGRAMS[g.kind]) return "";
     return `<figure class="dg dg-k-${g.kind}">${g.title ? `<figcaption>${fmt(g.title)}</figcaption>` : ""}
@@ -320,6 +340,9 @@
       <h1>Learn</h1>
       <p class="lead">One short lesson per ${esc(EXAM_INFO.subLabel)}: the idea in one sentence, a diagram, the key points,
       the exam traps and a question to check yourself. Built for a quick read.</p>
+      ${OVERVIEW ? `<button type="button" class="card big-cta" data-big="1">
+        <span class="tldr-tag">Start here</span><b>${esc(OVERVIEW.title)}</b>
+        <span>${esc(OVERVIEW.teaser)}</span><em>Open the big picture →</em></button>` : ""}
       <div class="card learn-progress">
         <div><strong>${done} of ${total}</strong> lessons read</div>
         <div class="progress"><div style="width:${total ? (done / total) * 100 : 0}%"></div></div>
@@ -399,6 +422,7 @@
     wrap.querySelector("[data-go]").addEventListener("click", (e) => { e.preventDefault(); go("learn"); });
     wrap.querySelector("[data-dom]").addEventListener("click", (e) => { e.preventDefault(); openDomain = d.id; go("learn"); });
     if (prevId) wrap.querySelector("#prevL").addEventListener("click", () => openLesson(prevId));
+    else if (OVERVIEW) { const p = wrap.querySelector("#prevL"); p.disabled = false; p.textContent = "← Big picture"; p.dataset.big = "1"; }
     if (nextId) wrap.querySelector("#nextL").addEventListener("click", () => openLesson(nextId));
     wrap.querySelector("#markL").addEventListener("click", () => {
       const st = load(); const r = new Set(st.read || []);
@@ -407,6 +431,43 @@
       if (!read.has(id) && nextId) openLesson(nextId); else openLesson(id);
     });
     renderCheck(wrap.querySelector("#check"), s, nQ);
+    app.appendChild(wrap);
+  }
+
+  /* ---------- Big picture: the course-wide map shown before the lessons ---------- */
+  const OVERVIEW_BLOCKS = {
+    text: (b) => `<p class="ov-text">${fmt(b.text)}</p>`,
+    diagram: (b) => diagramHtml(b.diagram),
+    callout: (b) => `<div class="card exam-tip">${b.tag ? `<span class="tldr-tag">${esc(b.tag)}</span>` : ""}${fmt(b.text)}</div>`,
+    table: (b) => `<div class="lt-wrap"><table class="lt"><thead><tr>${b.head.map((h) => `<th>${fmt(h)}</th>`).join("")}</tr></thead>
+      <tbody>${b.rows.map((r) => `<tr>${r.map((c) => `<td>${fmt(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`,
+    themes: (b) => b.families.map((f) => `<h3 class="ov-fam">${fmt(f.name)}</h3><div class="themes">${f.items.map((t) => `<div class="theme">
+      <div class="theme-h"><b>${fmt(t.term)}</b>${(t.ids || []).map((i) => `{{${i}}}`).map(fmt).join("")}</div>
+      <p>${fmt(t.what)}</p><p class="theme-link">↔ ${fmt(t.fits)}</p></div>`).join("")}</div>`).join(""),
+  };
+
+  function openOverview() {
+    setActive("learn"); app.innerHTML = ""; window.scrollTo(0, 0);
+    const first = lessonOrder()[0];
+    const wrap = el(`<article class="lesson overview">
+      <div class="crumbs"><a href="#" data-go="learn">Learn</a> › Big picture</div>
+      <h1>${esc(OVERVIEW.title)}</h1>
+      <p class="lead">${fmt(OVERVIEW.lead)}</p>
+      <nav class="ov-nav">${OVERVIEW.sections.map((s) => `<button type="button" class="chip" data-sec="${esc(s.id)}">${esc(s.nav)}</button>`).join("")}</nav>
+      ${OVERVIEW.sections.map((s, i) => `<section class="ov-sec" id="ov-${esc(s.id)}">
+        <h2><span class="ov-num">${i + 1}</span>${esc(s.title)}</h2>
+        ${s.intro ? `<p class="ov-text">${fmt(s.intro)}</p>` : ""}
+        ${s.blocks.map((b) => OVERVIEW_BLOCKS[b.type](b)).join("")}</section>`).join("")}
+      <div class="lesson-nav">
+        <button class="btn ghost" data-go="learn">← All lessons</button>
+        ${first ? `<button class="btn" data-lesson="${esc(first)}">Start with lesson ${esc(first)} →</button>` : ""}
+      </div>
+    </article>`);
+    wrap.addEventListener("click", (e) => {
+      const sec = e.target.closest("[data-sec]");
+      if (sec) wrap.querySelector("#ov-" + sec.dataset.sec).scrollIntoView();
+      if (e.target.closest("[data-go]")) { e.preventDefault(); go("learn"); }
+    });
     app.appendChild(wrap);
   }
 
@@ -965,7 +1026,15 @@
   };
 
   /* ---------- dev helper: parity checks from tools/ ---------- */
-  window.CCAR_DEV = { allocateByWeight, examAllocation, scaleScore, prepareItems, buildExamSet, buildDiagnostic, openLesson };
+  window.CCAR_DEV = { allocateByWeight, examAllocation, scaleScore, prepareItems, buildExamSet, buildDiagnostic, openLesson, openOverview };
+
+  /* Lesson links ({{1.5}}, map boxes) and "big picture" links, wherever they are rendered. */
+  app.addEventListener("click", (e) => {
+    const big = e.target.closest("[data-big]");
+    if (big) { e.preventDefault(); openOverview(); return; }
+    const link = e.target.closest("[data-lesson]");
+    if (link && LESSONS.some((l) => l.id === link.dataset.lesson)) { e.preventDefault(); openLesson(link.dataset.lesson); }
+  });
 
   go("home");
 })();
